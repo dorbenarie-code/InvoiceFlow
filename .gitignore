@@ -1,0 +1,42 @@
+# Build output
+bin/
+obj/
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+coverage.opencover.xml
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+*.DotSettings.user
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# NuGet
+*.nupkg
+packages/
+
+# Local environment / secrets
+.env
+.env.*
+secrets.json
+
+# ASP.NET generated files
+appsettings.Local.json
