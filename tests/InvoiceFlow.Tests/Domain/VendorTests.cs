@@ -28,6 +28,22 @@ public sealed class VendorTests
     }
 
     [Fact]
+    public void Constructor_ShouldTreatWhitespaceTaxIdAsMissing()
+    {
+        var vendor = new Vendor("Cohen Office Supplies Ltd", "   ");
+
+        Assert.Null(vendor.TaxId);
+    }
+
+    [Fact]
+    public void Constructor_ShouldTreatTaxIdWithOnlyIgnoredCharactersAsMissing()
+    {
+        var vendor = new Vendor("Cohen Office Supplies Ltd", " - - ");
+
+        Assert.Null(vendor.TaxId);
+    }
+
+    [Fact]
     public void Constructor_ShouldNormalizeTaxId_WhenTaxIdContainsSpacesAndDashes()
     {
         var vendor = new Vendor("Cohen Office Supplies Ltd", "516-789 123");
@@ -57,6 +73,16 @@ public sealed class VendorTests
         var vendor = new Vendor("Short Tax Vendor", "12345678");
 
         Assert.Equal("12345678", vendor.TaxId);
+    }
+
+    [Fact]
+    public void Constructor_ShouldAllowTaxIdAtMaximumLength()
+    {
+        var taxId = new string('1', 50);
+
+        var vendor = new Vendor("Cohen Office Supplies Ltd", taxId);
+
+        Assert.Equal(taxId, vendor.TaxId);
     }
 
     [Fact]

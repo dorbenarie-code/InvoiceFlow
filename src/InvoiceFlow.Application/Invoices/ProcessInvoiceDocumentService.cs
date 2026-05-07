@@ -40,26 +40,87 @@ public sealed class ProcessInvoiceDocumentService : IInvoiceDocumentProcessor
     {
         ArgumentNullException.ThrowIfNull(document);
 
-        var storedDocument = await _documentStorage.SaveAsync(
-            document,
-            cancellationToken);
+        StoredDocument storedDocument;
 
-        var extractedDocument = await _documentExtractor.ExtractAsync(
-            document,
-            cancellationToken);
+        try
+        {
+            storedDocument = await _documentStorage.SaveAsync(
+                document,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new DocumentStorageFailedException(
+                "Document storage failed.",
+                exception);
+        }
+
+        ExtractedDocument extractedDocument;
+
+        try
+        {
+            extractedDocument = await _documentExtractor.ExtractAsync(
+                document,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new DocumentExtractionFailedException(
+                "Document extraction failed.",
+                exception);
+        }
+
+        if (extractedDocument is null)
+        {
+            throw new InvalidOperationException(
+                "Document extractor returned no extracted document.");
+        }
 
         var invoice = await _invoiceMapper.MapAsync(
             extractedDocument,
             storedDocument.Id,
             cancellationToken);
 
+        if (invoice is null)
+        {
+            throw new InvalidOperationException(
+                "Invoice mapper returned no invoice.");
+        }
+
+        if (invoice.SourceDocumentId != storedDocument.Id)
+        {
+            throw new InvalidOperationException(
+                "Mapped invoice source document id must match the stored document id.");
+        }
+
         var validationReport = _invoiceValidator.Validate(invoice);
 
         invoice.ApplyValidationReport(validationReport);
 
-        await _invoiceRepository.SaveAsync(
-            invoice,
-            cancellationToken);
+        try
+        {
+            await _invoiceRepository.SaveAsync(
+                invoice,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new InvoicePersistenceFailedException(
+                "Invoice persistence failed.",
+                exception);
+        }
 
         return new ProcessInvoiceDocumentResult(
             storedDocument.Id,

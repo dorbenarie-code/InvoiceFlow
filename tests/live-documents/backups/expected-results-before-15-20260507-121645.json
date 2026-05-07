@@ -1,0 +1,29 @@
+[
+  {
+    "fileName": "invoice-001.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0001",
+    "expectedVendorName": "Synthetic Vendor 001 Ltd"
+  },
+  {
+    "fileName": "invoice-002.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0002",
+    "expectedVendorName": "Synthetic Vendor 002 Ltd"
+  },
+  {
+    "fileName": "invoice-003.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-004.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedIssueCode": "MISSING_VENDOR"
+  },
+  {
+    "fileName": "invoice-005.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedIssueCode": "MISSING_TOTAL_AMOUNT"
+  }
+]

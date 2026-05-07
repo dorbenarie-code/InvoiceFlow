@@ -11,7 +11,7 @@ public sealed record InvoiceValidationIssue
     public string Message { get; }
     public InvoiceValidationSeverity Severity { get; }
 
-    private  InvoiceValidationIssue(
+    private InvoiceValidationIssue(
         string code,
         string? fieldName,
         string message,

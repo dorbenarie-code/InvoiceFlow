@@ -18,14 +18,21 @@ public sealed class StoredDocumentTests
     [Fact]
     public void Constructor_ShouldThrow_WhenIdIsEmpty()
     {
-        Assert.Throws<ArgumentException>(() =>
+        var exception = Assert.Throws<ArgumentException>(() =>
             new StoredDocument(Guid.Empty, "invoice.pdf"));
+
+        Assert.Equal("id", exception.ParamName);
     }
 
-    [Fact]
-    public void Constructor_ShouldThrow_WhenFileNameIsEmpty()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Constructor_ShouldThrow_WhenFileNameIsMissing(string? fileName)
     {
-        Assert.Throws<ArgumentException>(() =>
-            new StoredDocument(Guid.NewGuid(), ""));
+        var exception = Assert.Throws<ArgumentException>(() =>
+            new StoredDocument(Guid.NewGuid(), fileName!));
+
+        Assert.Equal("fileName", exception.ParamName);
     }
 }

@@ -32,6 +32,11 @@ public sealed record Vendor
                 .ToArray())
             .ToUpperInvariant();
 
+        if (cleaned.Length == 0)
+        {
+            return null;
+        }
+
         if (cleaned.Length > MaxTaxIdLength)
         {
             throw new ArgumentException(

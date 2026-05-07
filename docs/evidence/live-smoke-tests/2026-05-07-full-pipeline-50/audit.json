@@ -1,0 +1,82 @@
+{
+  "runDirectory": "test-results/live-batch/live-test-full-pipeline-50-20260507-124339",
+  "summary": {
+    "total": 50,
+    "passed": 50,
+    "failed": 0,
+    "infrastructureFailures": 0,
+    "missingFiles": 0,
+    "failures": []
+  },
+  "responseFiles": 50,
+  "statuses": {
+    "Verified": 30,
+    "RequiresHumanReview": 20
+  },
+  "issueCodes": {
+    "TOTAL_MISMATCH": 10,
+    "MISSING_VENDOR": 5,
+    "MISSING_TOTAL_AMOUNT": 5
+  },
+  "documentIds": {
+    "count": 50,
+    "duplicates": 0
+  },
+  "invoiceIds": {
+    "count": 50,
+    "duplicates": 0
+  },
+  "missingIds": [],
+  "sourceDocumentMismatches": [],
+  "durations": {
+    "count": 50,
+    "averageSeconds": 9.985,
+    "medianSeconds": 7.931,
+    "minSeconds": 4.947,
+    "maxSeconds": 26.299,
+    "slowDocumentsOver15Seconds": [
+      {
+        "fileName": "invoice-007.pdf",
+        "durationSeconds": 19.607,
+        "status": "Verified",
+        "result": "PASSED"
+      },
+      {
+        "fileName": "invoice-014.pdf",
+        "durationSeconds": 17.592,
+        "status": "Verified",
+        "result": "PASSED"
+      },
+      {
+        "fileName": "invoice-021.pdf",
+        "durationSeconds": 19.333,
+        "status": "Verified",
+        "result": "PASSED"
+      },
+      {
+        "fileName": "invoice-028.pdf",
+        "durationSeconds": 19.368,
+        "status": "Verified",
+        "result": "PASSED"
+      },
+      {
+        "fileName": "invoice-034.pdf",
+        "durationSeconds": 20.207,
+        "status": "RequiresHumanReview",
+        "result": "PASSED"
+      },
+      {
+        "fileName": "invoice-040.pdf",
+        "durationSeconds": 15.649,
+        "status": "RequiresHumanReview",
+        "result": "PASSED"
+      },
+      {
+        "fileName": "invoice-046.pdf",
+        "durationSeconds": 26.299,
+        "status": "RequiresHumanReview",
+        "result": "PASSED"
+      }
+    ]
+  }
+}

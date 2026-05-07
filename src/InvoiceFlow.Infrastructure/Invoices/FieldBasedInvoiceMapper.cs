@@ -17,7 +17,7 @@ public sealed class FieldBasedInvoiceMapper : IInvoiceMapper
         cancellationToken.ThrowIfCancellationRequested();
 
         var fields = document.Fields;
-           
+
         var vendor = MapVendor(fields);
         var invoiceNumber = GetField(fields, "InvoiceNumber");
         var issueDate = MapIssueDate(fields);
@@ -59,7 +59,7 @@ public sealed class FieldBasedInvoiceMapper : IInvoiceMapper
 
     private static DateOnly? MapIssueDate(IReadOnlyDictionary<string, string> fields)
     {
-        var value = GetField(fields, "IssueDate");
+        var value = GetField(fields, "IssueDate")?.Trim();
 
         if (string.IsNullOrWhiteSpace(value))
         {

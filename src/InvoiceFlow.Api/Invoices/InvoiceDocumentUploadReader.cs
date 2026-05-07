@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using InvoiceFlow.Application.Documents;
-using Microsoft.AspNetCore.Http.Features;
 
 namespace InvoiceFlow.Api.Invoices;
 
@@ -8,6 +7,8 @@ internal static class InvoiceDocumentUploadReader
 {
     private const string DefaultContentType = "application/octet-stream";
     private const int MaxSignatureLength = 8;
+    private const string ExpectedFileFieldName = "file";
+    private const string MultipartFormDataContentType = "multipart/form-data";
 
     private static readonly HashSet<string> SupportedFileContentTypes = new(
         StringComparer.OrdinalIgnoreCase)
@@ -41,7 +42,7 @@ internal static class InvoiceDocumentUploadReader
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(options);
 
-        if (!request.HasFormContentType)
+        if (!HasMultipartFormDataContentType(request))
         {
             return InvoiceDocumentUploadReadResult.Failure(
                 "INVALID_CONTENT_TYPE",
@@ -61,7 +62,18 @@ internal static class InvoiceDocumentUploadReader
                 "Request form data is invalid.");
         }
 
-        var file = form.Files.GetFile("file") ?? form.Files.FirstOrDefault();
+        var invoiceFiles = form.Files.GetFiles(ExpectedFileFieldName);
+
+        if (invoiceFiles.Count > 1)
+        {
+            return InvoiceDocumentUploadReadResult.Failure(
+                "TOO_MANY_FILES",
+                "Only one invoice document file can be uploaded.");
+        }
+
+        var file = invoiceFiles.Count == 0
+            ? null
+            : invoiceFiles[0];
 
         if (file is null || file.Length == 0)
         {
@@ -80,7 +92,8 @@ internal static class InvoiceDocumentUploadReader
 
         var fileName = NormalizeFileName(file.FileName);
 
-        if (string.IsNullOrWhiteSpace(fileName))
+        if (string.IsNullOrWhiteSpace(fileName)
+            || fileName is "." or "..")
         {
             return InvoiceDocumentUploadReadResult.Failure(
                 "INVALID_FILE_NAME",
@@ -95,8 +108,6 @@ internal static class InvoiceDocumentUploadReader
                 "UNSUPPORTED_FILE_CONTENT_TYPE",
                 "Invoice document file must be a PDF, JPG, or PNG.");
         }
-
-        byte[] content;
 
         await using (var fileStream = file.OpenReadStream())
         {
@@ -116,19 +127,6 @@ internal static class InvoiceDocumentUploadReader
                     "INVALID_FILE_SIGNATURE",
                     "Invoice document file content does not match its declared file type.");
             }
-
-            using var memoryStream = new MemoryStream();
-
-            memoryStream.Write(
-                signatureBuffer,
-                0,
-                signatureBytesRead);
-
-            await fileStream.CopyToAsync(
-                memoryStream,
-                cancellationToken);
-
-            content = memoryStream.ToArray();
         }
 
         try
@@ -136,7 +134,8 @@ internal static class InvoiceDocumentUploadReader
             var document = new DocumentInput(
                 fileName,
                 contentType,
-                content);
+                _ => ValueTask.FromResult<Stream>(file.OpenReadStream()),
+                contentLength: file.Length);
 
             return InvoiceDocumentUploadReadResult.Success(document);
         }
@@ -146,6 +145,25 @@ internal static class InvoiceDocumentUploadReader
                 "INVALID_DOCUMENT",
                 exception.Message);
         }
+    }
+
+    private static bool HasMultipartFormDataContentType(HttpRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ContentType))
+        {
+            return false;
+        }
+
+        if (!MediaTypeHeaderValue.TryParse(request.ContentType, out var mediaTypeHeader)
+            || string.IsNullOrWhiteSpace(mediaTypeHeader.MediaType))
+        {
+            return false;
+        }
+
+        return string.Equals(
+            mediaTypeHeader.MediaType,
+            MultipartFormDataContentType,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<int> ReadSignatureBytesAsync(

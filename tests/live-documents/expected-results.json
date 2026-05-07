@@ -1,0 +1,302 @@
+[
+  {
+    "fileName": "invoice-001.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0001",
+    "expectedVendorName": "Synthetic Vendor 001 Ltd"
+  },
+  {
+    "fileName": "invoice-002.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0002",
+    "expectedVendorName": "Synthetic Vendor 002 Ltd"
+  },
+  {
+    "fileName": "invoice-003.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0003",
+    "expectedVendorName": "Synthetic Vendor 003 Ltd"
+  },
+  {
+    "fileName": "invoice-004.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0004",
+    "expectedVendorName": "Synthetic Vendor 004 Ltd"
+  },
+  {
+    "fileName": "invoice-005.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0005",
+    "expectedVendorName": "Synthetic Vendor 005 Ltd"
+  },
+  {
+    "fileName": "invoice-006.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0006",
+    "expectedVendorName": "Synthetic Vendor 006 Ltd"
+  },
+  {
+    "fileName": "invoice-007.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0007",
+    "expectedVendorName": "Synthetic Vendor 007 Ltd"
+  },
+  {
+    "fileName": "invoice-008.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0008",
+    "expectedVendorName": "Synthetic Vendor 008 Ltd"
+  },
+  {
+    "fileName": "invoice-009.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0009",
+    "expectedVendorName": "Synthetic Vendor 009 Ltd"
+  },
+  {
+    "fileName": "invoice-010.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0010",
+    "expectedVendorName": "Synthetic Vendor 010 Ltd"
+  },
+  {
+    "fileName": "invoice-011.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0011",
+    "expectedVendorName": "Synthetic Vendor 011 Ltd"
+  },
+  {
+    "fileName": "invoice-012.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0012",
+    "expectedVendorName": "Synthetic Vendor 012 Ltd"
+  },
+  {
+    "fileName": "invoice-013.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0013",
+    "expectedVendorName": "Synthetic Vendor 013 Ltd"
+  },
+  {
+    "fileName": "invoice-014.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0014",
+    "expectedVendorName": "Synthetic Vendor 014 Ltd"
+  },
+  {
+    "fileName": "invoice-015.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0015",
+    "expectedVendorName": "Synthetic Vendor 015 Ltd"
+  },
+  {
+    "fileName": "invoice-016.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0016",
+    "expectedVendorName": "Synthetic Vendor 016 Ltd"
+  },
+  {
+    "fileName": "invoice-017.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0017",
+    "expectedVendorName": "Synthetic Vendor 017 Ltd"
+  },
+  {
+    "fileName": "invoice-018.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0018",
+    "expectedVendorName": "Synthetic Vendor 018 Ltd"
+  },
+  {
+    "fileName": "invoice-019.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0019",
+    "expectedVendorName": "Synthetic Vendor 019 Ltd"
+  },
+  {
+    "fileName": "invoice-020.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0020",
+    "expectedVendorName": "Synthetic Vendor 020 Ltd"
+  },
+  {
+    "fileName": "invoice-021.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0021",
+    "expectedVendorName": "Synthetic Vendor 021 Ltd"
+  },
+  {
+    "fileName": "invoice-022.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0022",
+    "expectedVendorName": "Synthetic Vendor 022 Ltd"
+  },
+  {
+    "fileName": "invoice-023.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0023",
+    "expectedVendorName": "Synthetic Vendor 023 Ltd"
+  },
+  {
+    "fileName": "invoice-024.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0024",
+    "expectedVendorName": "Synthetic Vendor 024 Ltd"
+  },
+  {
+    "fileName": "invoice-025.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0025",
+    "expectedVendorName": "Synthetic Vendor 025 Ltd"
+  },
+  {
+    "fileName": "invoice-026.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0026",
+    "expectedVendorName": "Synthetic Vendor 026 Ltd"
+  },
+  {
+    "fileName": "invoice-027.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0027",
+    "expectedVendorName": "Synthetic Vendor 027 Ltd"
+  },
+  {
+    "fileName": "invoice-028.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0028",
+    "expectedVendorName": "Synthetic Vendor 028 Ltd"
+  },
+  {
+    "fileName": "invoice-029.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0029",
+    "expectedVendorName": "Synthetic Vendor 029 Ltd"
+  },
+  {
+    "fileName": "invoice-030.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0030",
+    "expectedVendorName": "Synthetic Vendor 030 Ltd"
+  },
+  {
+    "fileName": "invoice-031.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0031",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-032.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0032",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-033.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0033",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-034.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0034",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-035.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0035",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-036.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0036",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-037.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0037",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-038.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0038",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-039.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0039",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-040.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0040",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-041.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0041",
+    "expectedIssueCode": "MISSING_VENDOR"
+  },
+  {
+    "fileName": "invoice-042.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0042",
+    "expectedIssueCode": "MISSING_VENDOR"
+  },
+  {
+    "fileName": "invoice-043.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0043",
+    "expectedIssueCode": "MISSING_VENDOR"
+  },
+  {
+    "fileName": "invoice-044.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0044",
+    "expectedIssueCode": "MISSING_VENDOR"
+  },
+  {
+    "fileName": "invoice-045.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0045",
+    "expectedIssueCode": "MISSING_VENDOR"
+  },
+  {
+    "fileName": "invoice-046.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0046",
+    "expectedIssueCode": "MISSING_TOTAL_AMOUNT"
+  },
+  {
+    "fileName": "invoice-047.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0047",
+    "expectedIssueCode": "MISSING_TOTAL_AMOUNT"
+  },
+  {
+    "fileName": "invoice-048.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0048",
+    "expectedIssueCode": "MISSING_TOTAL_AMOUNT"
+  },
+  {
+    "fileName": "invoice-049.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0049",
+    "expectedIssueCode": "MISSING_TOTAL_AMOUNT"
+  },
+  {
+    "fileName": "invoice-050.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0050",
+    "expectedIssueCode": "MISSING_TOTAL_AMOUNT"
+  }
+]

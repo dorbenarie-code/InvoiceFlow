@@ -40,3 +40,27 @@ secrets.json
 
 # ASP.NET generated files
 appsettings.Local.json
+test-results/
+
+# Local generated/helper files
+FullSystemCode.md
+README.md.bak*
+*.bak
+*.bak-*
+combine.py
+
+# Local ASP.NET configuration that may contain secrets
+appsettings.Development.json
+appsettings.*.Local.json
+local.settings.json
+
+# Certificates / private keys
+*.pfx
+*.pem
+*.key
+*.crt
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3

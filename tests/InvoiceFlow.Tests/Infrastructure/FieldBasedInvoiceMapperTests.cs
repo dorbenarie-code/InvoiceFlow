@@ -62,6 +62,22 @@ public sealed class FieldBasedInvoiceMapperTests
         Assert.Equal("ILS", invoice.TotalAmount?.Currency);
         Assert.Equal(new DateOnly(2026, 4, 30), invoice.IssueDate);
     }
+    [Fact]
+public async Task MapAsync_ShouldMapIssueDate_WhenValueHasLeadingAndTrailingWhitespace()
+{
+    var document = new ExtractedDocument(
+        "raw text",
+        new Dictionary<string, string>
+        {
+            ["IssueDate"] = " 2026-04-30 "
+        });
+
+    var mapper = new FieldBasedInvoiceMapper();
+
+    var invoice = await mapper.MapAsync(document, Guid.NewGuid());
+
+    Assert.Equal(new DateOnly(2026, 4, 30), invoice.IssueDate);
+}
 
     [Fact]
     public async Task MapAsync_ShouldAllowMissingFields()

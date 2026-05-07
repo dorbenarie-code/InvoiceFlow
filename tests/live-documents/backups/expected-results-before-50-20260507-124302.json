@@ -1,0 +1,87 @@
+[
+  {
+    "fileName": "invoice-001.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0001",
+    "expectedVendorName": "Synthetic Vendor 001 Ltd"
+  },
+  {
+    "fileName": "invoice-002.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0002",
+    "expectedVendorName": "Synthetic Vendor 002 Ltd"
+  },
+  {
+    "fileName": "invoice-003.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0003",
+    "expectedVendorName": "Synthetic Vendor 003 Ltd"
+  },
+  {
+    "fileName": "invoice-004.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0004",
+    "expectedVendorName": "Synthetic Vendor 004 Ltd"
+  },
+  {
+    "fileName": "invoice-005.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0005",
+    "expectedVendorName": "Synthetic Vendor 005 Ltd"
+  },
+  {
+    "fileName": "invoice-006.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0006",
+    "expectedVendorName": "Synthetic Vendor 006 Ltd"
+  },
+  {
+    "fileName": "invoice-007.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0007",
+    "expectedVendorName": "Synthetic Vendor 007 Ltd"
+  },
+  {
+    "fileName": "invoice-008.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0008",
+    "expectedVendorName": "Synthetic Vendor 008 Ltd"
+  },
+  {
+    "fileName": "invoice-009.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-010.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-011.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedIssueCode": "TOTAL_MISMATCH"
+  },
+  {
+    "fileName": "invoice-012.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedIssueCode": "MISSING_VENDOR"
+  },
+  {
+    "fileName": "invoice-013.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedIssueCode": "MISSING_TOTAL_AMOUNT"
+  },
+  {
+    "fileName": "invoice-014.pdf",
+    "expectedStatus": "Verified",
+    "expectedInvoiceNumber": "SYN-0014",
+    "expectedVendorName": "Synthetic Vendor 014 Ltd"
+  },
+  {
+    "fileName": "invoice-015.pdf",
+    "expectedStatus": "RequiresHumanReview",
+    "expectedInvoiceNumber": "SYN-0015",
+    "expectedIssueCode": "MISSING_VENDOR"
+  }
+]

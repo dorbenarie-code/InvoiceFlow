@@ -1,13 +1,18 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using InvoiceFlow.Api.Invoices;
 using InvoiceFlow.Application.Documents;
+using InvoiceFlow.Application.Invoices;
+using InvoiceFlow.Domain.Invoices;
+using InvoiceFlow.Domain.ValueObjects;
 using InvoiceFlow.Infrastructure.Documents;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace InvoiceFlow.Tests.Api;
 
@@ -81,9 +86,12 @@ public sealed class InvoiceApiTests
     }
 
     [Fact]
-    public async Task ProcessInvoice_ShouldReturnBadRequest_WhenFileIsMissing()
+    public async Task ProcessInvoice_ShouldReturnBadRequestAndNotCallProcessor_WhenFileIsMissing()
     {
-        await using var factory = CreateFactory();
+        var processor = new SpyInvoiceDocumentProcessor();
+
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: processor);
 
         var client = factory.CreateClient();
 
@@ -99,18 +107,20 @@ public sealed class InvoiceApiTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseBody = await response.Content.ReadAsStringAsync();
+        await AssertApiErrorCodeAsync(
+            response,
+            "FILE_REQUIRED");
 
-        using var json = JsonDocument.Parse(responseBody);
-        var root = json.RootElement;
-
-        Assert.Equal("FILE_REQUIRED", root.GetProperty("code").GetString());
+        Assert.False(processor.WasCalled);
     }
 
     [Fact]
-    public async Task ProcessInvoice_ShouldReturnBadRequest_WhenContentTypeIsNotMultipart()
+    public async Task ProcessInvoice_ShouldReturnBadRequestAndNotCallProcessor_WhenContentTypeIsNotMultipart()
     {
-        await using var factory = CreateFactory();
+        var processor = new SpyInvoiceDocumentProcessor();
+
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: processor);
 
         var client = factory.CreateClient();
 
@@ -122,18 +132,113 @@ public sealed class InvoiceApiTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseBody = await response.Content.ReadAsStringAsync();
+        await AssertApiErrorCodeAsync(
+            response,
+            "INVALID_CONTENT_TYPE");
 
-        using var json = JsonDocument.Parse(responseBody);
-        var root = json.RootElement;
-
-        Assert.Equal("INVALID_CONTENT_TYPE", root.GetProperty("code").GetString());
+        Assert.False(processor.WasCalled);
     }
 
     [Fact]
-    public async Task ProcessInvoice_ShouldReturnBadRequest_WhenFileIsEmpty()
+    public async Task ProcessInvoice_ShouldReturnBadRequestAndNotCallProcessor_WhenRequestIsFormUrlEncoded()
     {
-        await using var factory = CreateFactory();
+        var processor = new SpyInvoiceDocumentProcessor();
+
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: processor);
+
+        var client = factory.CreateClient();
+
+        using var content = new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["file"] = "not-a-real-file"
+            });
+
+        var response = await client.PostAsync(
+            "/api/invoices/process",
+            content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        await AssertApiErrorCodeAsync(
+            response,
+            "INVALID_CONTENT_TYPE");
+
+        Assert.False(processor.WasCalled);
+    }
+
+    [Fact]
+    public async Task ProcessInvoice_ShouldReturnBadRequestAndNotCallProcessor_WhenUploadedFileUsesUnexpectedFieldName()
+    {
+        var processor = new SpyInvoiceDocumentProcessor();
+
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: processor);
+
+        var client = factory.CreateClient();
+
+        using var content = CreateMultipartFileContent(
+            fileBytes: CreatePdfBytes(),
+            contentType: "application/pdf",
+            fileName: "invoice.pdf",
+            fieldName: "document");
+
+        var response = await client.PostAsync(
+            "/api/invoices/process",
+            content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        await AssertApiErrorCodeAsync(
+            response,
+            "FILE_REQUIRED");
+
+        Assert.False(processor.WasCalled);
+    }
+
+    [Fact]
+    public async Task ProcessInvoice_ShouldReturnBadRequestAndNotCallProcessor_WhenMultipleFilesAreUploaded()
+    {
+        var processor = new SpyInvoiceDocumentProcessor();
+
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: processor);
+
+        var client = factory.CreateClient();
+
+        using var content = CreateMultipartFileContent();
+
+        var secondFileContent = new ByteArrayContent(CreatePdfBytes());
+
+        secondFileContent.Headers.ContentType =
+            MediaTypeHeaderValue.Parse("application/pdf");
+
+        content.Add(
+            secondFileContent,
+            "file",
+            "second-invoice.pdf");
+
+        var response = await client.PostAsync(
+            "/api/invoices/process",
+            content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        await AssertApiErrorCodeAsync(
+            response,
+            "TOO_MANY_FILES");
+
+        Assert.False(processor.WasCalled);
+    }
+
+    [Fact]
+    public async Task ProcessInvoice_ShouldReturnBadRequestAndNotCallProcessor_WhenFileIsEmpty()
+    {
+        var processor = new SpyInvoiceDocumentProcessor();
+
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: processor);
 
         var client = factory.CreateClient();
 
@@ -145,18 +250,172 @@ public sealed class InvoiceApiTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseBody = await response.Content.ReadAsStringAsync();
+        await AssertApiErrorCodeAsync(
+            response,
+            "FILE_REQUIRED");
 
-        using var json = JsonDocument.Parse(responseBody);
-        var root = json.RootElement;
-
-        Assert.Equal("FILE_REQUIRED", root.GetProperty("code").GetString());
+        Assert.False(processor.WasCalled);
     }
 
     [Fact]
-    public async Task ProcessInvoice_ShouldReturnBadRequest_WhenFileContentTypeIsUnsupported()
+    public async Task ProcessInvoice_ShouldReturnBadRequestAndNotCallProcessor_WhenFileNameIsDotOnly()
     {
-        await using var factory = CreateFactory();
+        var processor = new SpyInvoiceDocumentProcessor();
+
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: processor);
+
+        var client = factory.CreateClient();
+
+        using var content = CreateMultipartFileContent(
+            fileBytes: CreatePdfBytes(),
+            contentType: "application/pdf",
+            fileName: ".");
+
+        var response = await client.PostAsync(
+            "/api/invoices/process",
+            content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        await AssertApiErrorCodeAsync(
+            response,
+            "INVALID_FILE_NAME");
+
+        Assert.False(processor.WasCalled);
+    }
+    [Fact]
+public async Task ProcessInvoice_ShouldReturnServiceUnavailable_WhenDocumentExtractorFails()
+{
+    await using var factory = CreateFactory(
+        configureServices: services =>
+        {
+            services.RemoveAll<IDocumentExtractor>();
+            services.AddSingleton<IDocumentExtractor, ThrowingDocumentExtractor>();
+        });
+
+    var client = factory.CreateClient();
+
+    using var content = CreateMultipartFileContent();
+
+    var response = await client.PostAsync(
+        "/api/invoices/process",
+        content);
+
+    Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+
+    await AssertApiErrorCodeAsync(
+        response,
+        "DOCUMENT_EXTRACTION_FAILED");
+
+    var responseBody = await response.Content.ReadAsStringAsync();
+
+    Assert.DoesNotContain(
+        "RequiresHumanReview",
+        responseBody,
+        StringComparison.OrdinalIgnoreCase);
+}
+
+    [Fact]
+    public async Task ProcessInvoice_ShouldReturnServiceUnavailable_WhenDocumentStorageFailsThroughRealPipeline()
+    {
+        var storage = new ThrowingDocumentStorage();
+
+        await using var factory = CreateFactory(
+            extractedDocument: CreateValidExtractedDocument(),
+            configureServices: services =>
+            {
+                services.RemoveAll<IDocumentStorage>();
+                services.AddSingleton<IDocumentStorage>(storage);
+            });
+
+        var client = factory.CreateClient();
+
+        using var content = CreateMultipartFileContent();
+
+        var response = await client.PostAsync(
+            "/api/invoices/process",
+            content);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+
+        await AssertApiErrorCodeAsync(
+            response,
+            "DOCUMENT_STORAGE_FAILED");
+
+        Assert.True(storage.WasCalled);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain(
+            "RequiresHumanReview",
+            responseBody,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ProcessInvoice_ShouldReturnServiceUnavailable_WhenInvoicePersistenceFails()
+    {
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: new ThrowingPersistenceInvoiceDocumentProcessor());
+
+        var client = factory.CreateClient();
+
+        using var content = CreateMultipartFileContent();
+
+        var response = await client.PostAsync(
+            "/api/invoices/process",
+            content);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+
+        await AssertApiErrorCodeAsync(
+            response,
+            "INVOICE_PERSISTENCE_FAILED");
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain(
+            "RequiresHumanReview",
+            responseBody,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ProcessInvoice_ShouldReturnBadRequestAndNotCallProcessor_WhenFileNameIsDoubleDot()
+    {
+        var processor = new SpyInvoiceDocumentProcessor();
+
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: processor);
+
+        var client = factory.CreateClient();
+
+        using var content = CreateMultipartFileContent(
+            fileBytes: CreatePdfBytes(),
+            contentType: "application/pdf",
+            fileName: "..");
+
+        var response = await client.PostAsync(
+            "/api/invoices/process",
+            content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        await AssertApiErrorCodeAsync(
+            response,
+            "INVALID_FILE_NAME");
+
+        Assert.False(processor.WasCalled);
+    }
+
+    [Fact]
+    public async Task ProcessInvoice_ShouldReturnBadRequestAndNotCallProcessor_WhenFileContentTypeIsUnsupported()
+    {
+        var processor = new SpyInvoiceDocumentProcessor();
+
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: processor);
 
         var client = factory.CreateClient();
 
@@ -170,18 +429,20 @@ public sealed class InvoiceApiTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseBody = await response.Content.ReadAsStringAsync();
+        await AssertApiErrorCodeAsync(
+            response,
+            "UNSUPPORTED_FILE_CONTENT_TYPE");
 
-        using var json = JsonDocument.Parse(responseBody);
-        var root = json.RootElement;
-
-        Assert.Equal("UNSUPPORTED_FILE_CONTENT_TYPE", root.GetProperty("code").GetString());
+        Assert.False(processor.WasCalled);
     }
 
     [Fact]
-    public async Task ProcessInvoice_ShouldReturnBadRequest_WhenFileSignatureDoesNotMatchContentType()
+    public async Task ProcessInvoice_ShouldReturnBadRequestAndNotCallProcessor_WhenFileSignatureDoesNotMatchContentType()
     {
-        await using var factory = CreateFactory();
+        var processor = new SpyInvoiceDocumentProcessor();
+
+        await using var factory = CreateFactory(
+            invoiceDocumentProcessor: processor);
 
         var client = factory.CreateClient();
 
@@ -195,12 +456,34 @@ public sealed class InvoiceApiTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseBody = await response.Content.ReadAsStringAsync();
+        await AssertApiErrorCodeAsync(
+            response,
+            "INVALID_FILE_SIGNATURE");
 
-        using var json = JsonDocument.Parse(responseBody);
-        var root = json.RootElement;
+        Assert.False(processor.WasCalled);
+    }
 
-        Assert.Equal("INVALID_FILE_SIGNATURE", root.GetProperty("code").GetString());
+    [Theory]
+    [MemberData(nameof(SupportedFileCases))]
+    public async Task ProcessInvoice_ShouldAcceptSupportedFileTypes_WhenSignatureMatchesContentType(
+        byte[] fileBytes,
+        string contentType,
+        string fileName)
+    {
+        await using var factory = CreateFactory(CreateValidExtractedDocument());
+
+        var client = factory.CreateClient();
+
+        using var content = CreateMultipartFileContent(
+            fileBytes: fileBytes,
+            contentType: contentType,
+            fileName: fileName);
+
+        var response = await client.PostAsync(
+            "/api/invoices/process",
+            content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -222,9 +505,10 @@ public sealed class InvoiceApiTests
     }
 
     [Fact]
-    public async Task ProcessInvoice_ShouldReturnPayloadTooLarge_WhenFileExceedsConfiguredLimit()
+    public async Task ProcessInvoice_ShouldReturnPayloadTooLargeAndNotCallProcessor_WhenFileExceedsConfiguredLimit()
     {
         var pdfBytes = CreatePdfBytes();
+        var processor = new SpyInvoiceDocumentProcessor();
 
         await using var factory = CreateFactory(
             configureServices: services =>
@@ -233,7 +517,8 @@ public sealed class InvoiceApiTests
                 {
                     options.MaxFileSizeInBytes = pdfBytes.Length - 1;
                 });
-            });
+            },
+            invoiceDocumentProcessor: processor);
 
         var client = factory.CreateClient();
 
@@ -247,18 +532,18 @@ public sealed class InvoiceApiTests
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
 
-        var responseBody = await response.Content.ReadAsStringAsync();
+        await AssertApiErrorCodeAsync(
+            response,
+            "FILE_TOO_LARGE");
 
-        using var json = JsonDocument.Parse(responseBody);
-        var root = json.RootElement;
-
-        Assert.Equal("FILE_TOO_LARGE", root.GetProperty("code").GetString());
+        Assert.False(processor.WasCalled);
     }
 
     [Fact]
-    public async Task ProcessInvoice_ShouldReturnPayloadTooLarge_WhenFileExceedsLimitFromConfiguration()
+    public async Task ProcessInvoice_ShouldReturnPayloadTooLargeAndNotCallProcessor_WhenFileExceedsLimitFromConfiguration()
     {
         var pdfBytes = CreatePdfBytes();
+        var processor = new SpyInvoiceDocumentProcessor();
 
         await using var factory = CreateFactory(
             configureConfiguration: configuration =>
@@ -268,7 +553,8 @@ public sealed class InvoiceApiTests
                     {
                         ["InvoiceFlow:Upload:MaxFileSizeInBytes"] = (pdfBytes.Length - 1).ToString()
                     });
-            });
+            },
+            invoiceDocumentProcessor: processor);
 
         var client = factory.CreateClient();
 
@@ -282,12 +568,11 @@ public sealed class InvoiceApiTests
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
 
-        var responseBody = await response.Content.ReadAsStringAsync();
+        await AssertApiErrorCodeAsync(
+            response,
+            "FILE_TOO_LARGE");
 
-        using var json = JsonDocument.Parse(responseBody);
-        var root = json.RootElement;
-
-        Assert.Equal("FILE_TOO_LARGE", root.GetProperty("code").GetString());
+        Assert.False(processor.WasCalled);
     }
 
     [Fact]
@@ -316,41 +601,117 @@ public sealed class InvoiceApiTests
         Assert.Equal("invoice.pdf", storedDocument.FileName);
     }
 
-    private static WebApplicationFactory<Program> CreateFactory(
-        ExtractedDocument? extractedDocument = null,
-        Action<IServiceCollection>? configureServices = null,
-        Action<IConfigurationBuilder>? configureConfiguration = null)
+    [Fact]
+    public async Task ProcessInvoice_ShouldReturnServiceUnavailable_WhenInvoiceRepositoryFailsThroughRealPipeline()
     {
-        return new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
-            {
-                builder.UseEnvironment("Testing");
+        var repository = new ThrowingInvoiceRepository();
 
-                if (configureConfiguration is not null)
-                {
-                    builder.ConfigureAppConfiguration((_, configuration) =>
+        await using var factory = CreateFactory(
+            extractedDocument: CreateValidExtractedDocument(),
+            configureServices: services =>
+            {
+                services.RemoveAll<IInvoiceRepository>();
+                services.AddSingleton<IInvoiceRepository>(repository);
+            });
+
+        var client = factory.CreateClient();
+
+        using var content = CreateMultipartFileContent();
+
+        var response = await client.PostAsync(
+            "/api/invoices/process",
+            content);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+
+        await AssertApiErrorCodeAsync(
+            response,
+            "INVOICE_PERSISTENCE_FAILED");
+
+        Assert.True(repository.WasCalled);
+        Assert.NotNull(repository.ReceivedInvoice);
+        Assert.Equal(InvoiceStatus.Verified, repository.ReceivedInvoice!.Status);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain(
+            "RequiresHumanReview",
+            responseBody,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static IEnumerable<object[]> SupportedFileCases()
+    {
+        yield return
+        [
+            CreatePdfBytes(),
+            "application/pdf",
+            "invoice.pdf"
+        ];
+
+        yield return
+        [
+            CreateJpegBytes(),
+            "image/jpeg",
+            "invoice.jpg"
+        ];
+
+        yield return
+        [
+            CreatePngBytes(),
+            "image/png",
+            "invoice.png"
+        ];
+    }
+
+    private static WebApplicationFactory<Program> CreateFactory(
+    ExtractedDocument? extractedDocument = null,
+    Action<IServiceCollection>? configureServices = null,
+    Action<IConfigurationBuilder>? configureConfiguration = null,
+    IInvoiceDocumentProcessor? invoiceDocumentProcessor = null)
+{
+    return new WebApplicationFactory<Program>()
+        .WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Testing");
+
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(
+                    new Dictionary<string, string?>
                     {
-                        configureConfiguration(configuration);
+                        ["InvoiceFlow:Upload:MaxFileSizeInBytes"] =
+                            InvoiceDocumentUploadOptions.DefaultMaxFileSizeInBytes
+                                .ToString(CultureInfo.InvariantCulture)
                     });
+
+                configureConfiguration?.Invoke(configuration);
+            });
+
+            builder.ConfigureServices(services =>
+            {
+                if (extractedDocument is not null)
+                {
+                    services.AddSingleton<IDocumentExtractor>(
+                        new FakeDocumentExtractor(extractedDocument));
                 }
 
-                builder.ConfigureServices(services =>
+                if (invoiceDocumentProcessor is not null)
                 {
-                    if (extractedDocument is not null)
-                    {
-                        services.AddSingleton<IDocumentExtractor>(
-                            new FakeDocumentExtractor(extractedDocument));
-                    }
+                    services.RemoveAll<IInvoiceDocumentProcessor>();
+                    services.AddSingleton(invoiceDocumentProcessor);
+                }
 
-                    configureServices?.Invoke(services);
-                });
+                configureServices?.Invoke(services);
             });
-    }
+        });
+}
 
     private static MultipartFormDataContent CreateMultipartFileContent(
         byte[]? fileBytes = null,
         string contentType = "application/pdf",
-        string fileName = "invoice.pdf")
+        string fileName = "invoice.pdf",
+        string fieldName = "file")
     {
         var content = new MultipartFormDataContent();
 
@@ -360,9 +721,25 @@ public sealed class InvoiceApiTests
         fileContent.Headers.ContentType =
             MediaTypeHeaderValue.Parse(contentType);
 
-        content.Add(fileContent, "file", fileName);
+        content.Add(
+            fileContent,
+            fieldName,
+            fileName);
 
         return content;
+    }
+
+    private static async Task AssertApiErrorCodeAsync(
+        HttpResponseMessage response,
+        string expectedCode)
+    {
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        using var json = JsonDocument.Parse(responseBody);
+
+        Assert.Equal(
+            expectedCode,
+            json.RootElement.GetProperty("code").GetString());
     }
 
     private static ExtractedDocument CreateValidExtractedDocument()
@@ -414,5 +791,100 @@ public sealed class InvoiceApiTests
             0x31, 0x2E, 0x37,
             0x0A
         ];
+    }
+
+    private static byte[] CreateJpegBytes()
+    {
+        return
+        [
+            0xFF, 0xD8, 0xFF,
+            0xE0,
+            0x00,
+            0x10
+        ];
+    }
+
+    private static byte[] CreatePngBytes()
+    {
+        return
+        [
+            0x89, 0x50, 0x4E, 0x47,
+            0x0D, 0x0A, 0x1A, 0x0A,
+            0x00
+        ];
+    }
+    private sealed class ThrowingDocumentStorage : IDocumentStorage
+    {
+        public bool WasCalled { get; private set; }
+
+        public Task<StoredDocument> SaveAsync(
+            DocumentInput document,
+            CancellationToken cancellationToken = default)
+        {
+            WasCalled = true;
+
+            throw new InvalidOperationException("Blob storage upload failed.");
+        }
+    }
+
+    private sealed class ThrowingInvoiceRepository : IInvoiceRepository
+    {
+        public bool WasCalled { get; private set; }
+
+        public Invoice? ReceivedInvoice { get; private set; }
+
+        public CancellationToken ReceivedCancellationToken { get; private set; }
+
+        public Task SaveAsync(
+            Invoice invoice,
+            CancellationToken cancellationToken = default)
+        {
+            WasCalled = true;
+            ReceivedInvoice = invoice;
+            ReceivedCancellationToken = cancellationToken;
+
+            throw new InvalidOperationException("SQL insert failed.");
+        }
+    }
+
+    private sealed class ThrowingDocumentExtractor : IDocumentExtractor
+{
+    public Task<ExtractedDocument> ExtractAsync(
+        DocumentInput document,
+        CancellationToken cancellationToken = default)
+    {
+        throw new InvalidOperationException("Azure rate limit.");
+    }
+}
+
+    private sealed class ThrowingPersistenceInvoiceDocumentProcessor
+        : IInvoiceDocumentProcessor
+    {
+        public Task<ProcessInvoiceDocumentResult> ProcessAsync(
+            DocumentInput document,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvoicePersistenceFailedException(
+                "Invoice persistence failed.",
+                new InvalidOperationException("SQL insert failed."));
+        }
+    }
+
+    private sealed class SpyInvoiceDocumentProcessor : IInvoiceDocumentProcessor
+    {
+        public bool WasCalled { get; private set; }
+
+        public DocumentInput? LastDocument { get; private set; }
+
+        public Task<ProcessInvoiceDocumentResult> ProcessAsync(
+            DocumentInput document,
+            CancellationToken cancellationToken = default)
+        {
+            WasCalled = true;
+            LastDocument = document;
+
+            throw new InvalidOperationException(
+                "The invoice document processor should not be called for invalid upload requests.");
+        }
     }
 }

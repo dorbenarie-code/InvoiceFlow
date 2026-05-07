@@ -37,10 +37,11 @@ public sealed class Invoice
         {
             throw new ArgumentException("Invoice id is required.", nameof(id));
         }
+
         if (sourceDocumentId == Guid.Empty)
-{
-    throw new ArgumentException("Source document id is required.", nameof(sourceDocumentId));
-}
+        {
+            throw new ArgumentException("Source document id is required.", nameof(sourceDocumentId));
+        }
 
         Id = id;
         SourceDocumentId = sourceDocumentId;
@@ -56,14 +57,14 @@ public sealed class Invoice
     }
 
     public static Invoice CreateExtracted(
-    Guid sourceDocumentId,
-    Vendor? vendor,
-    string? invoiceNumber,
-    DateOnly? issueDate,
-    CurrencyAmount? subtotalAmount,
-    CurrencyAmount? vatAmount,
-    CurrencyAmount? totalAmount,
-    IReadOnlyDictionary<string, string>? metadata = null)
+        Guid sourceDocumentId,
+        Vendor? vendor,
+        string? invoiceNumber,
+        DateOnly? issueDate,
+        CurrencyAmount? subtotalAmount,
+        CurrencyAmount? vatAmount,
+        CurrencyAmount? totalAmount,
+        IReadOnlyDictionary<string, string>? metadata = null)
     {
         return new Invoice(
             Guid.NewGuid(),

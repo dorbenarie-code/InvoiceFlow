@@ -22,6 +22,22 @@ public sealed class ExtractedDocumentTests
     }
 
     [Fact]
+    public void Constructor_ShouldNormalizeNullRawTextToEmptyString()
+    {
+        var document = new ExtractedDocument(null!);
+
+        Assert.Equal(string.Empty, document.RawText);
+    }
+
+    [Fact]
+    public void Constructor_ShouldTrimRawText()
+    {
+        var document = new ExtractedDocument("  raw invoice text  ");
+
+        Assert.Equal("raw invoice text", document.RawText);
+    }
+
+    [Fact]
     public void Constructor_ShouldAllowMissingFields()
     {
         var document = new ExtractedDocument("raw text");
@@ -43,19 +59,20 @@ public sealed class ExtractedDocumentTests
 
         Assert.Equal("Cohen Office Supplies Ltd", document.Fields["VendorName"]);
     }
+
     [Fact]
-public void Constructor_ShouldSupportCaseInsensitiveFieldLookup()
-{
-    var fields = new Dictionary<string, string>
+    public void Constructor_ShouldSupportCaseInsensitiveFieldLookup()
     {
-        ["VendorName"] = "Cohen Office Supplies Ltd"
-    };
+        var fields = new Dictionary<string, string>
+        {
+            ["VendorName"] = "Cohen Office Supplies Ltd"
+        };
 
-    var document = new ExtractedDocument("raw text", fields);
+        var document = new ExtractedDocument("raw text", fields);
 
-    Assert.True(document.Fields.TryGetValue("vendorname", out var vendorName));
-    Assert.Equal("Cohen Office Supplies Ltd", vendorName);
-}
+        Assert.True(document.Fields.TryGetValue("vendorname", out var vendorName));
+        Assert.Equal("Cohen Office Supplies Ltd", vendorName);
+    }
 
     [Fact]
     public void Constructor_ShouldExposeFieldsAsReadOnlyDictionary()

@@ -1,3 +1,4 @@
+using InvoiceFlow.Application.Documents;
 using InvoiceFlow.Application.Invoices;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
@@ -31,6 +32,9 @@ public static class InvoiceEndpoints
                 "application/json")
             .Produces<ApiErrorResponse>(
                 StatusCodes.Status413PayloadTooLarge,
+                "application/json")
+            .Produces<ApiErrorResponse>(
+                StatusCodes.Status503ServiceUnavailable,
                 "application/json")
             .WithOpenApi(operation =>
             {
@@ -98,6 +102,30 @@ public static class InvoiceEndpoints
                 cancellationToken);
 
             return Results.Ok(ProcessInvoiceResponse.FromResult(result));
+        }
+        catch (DocumentStorageFailedException)
+        {
+            return Results.Json(
+                new ApiErrorResponse(
+                    "DOCUMENT_STORAGE_FAILED",
+                    "Document storage failed. Please try again later."),
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+        catch (DocumentExtractionFailedException)
+        {
+            return Results.Json(
+                new ApiErrorResponse(
+                    "DOCUMENT_EXTRACTION_FAILED",
+                    "Document extraction failed. Please try again later."),
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+        catch (InvoicePersistenceFailedException)
+        {
+            return Results.Json(
+                new ApiErrorResponse(
+                    "INVOICE_PERSISTENCE_FAILED",
+                    "Invoice persistence failed. Please try again later."),
+                statusCode: StatusCodes.Status503ServiceUnavailable);
         }
         catch (ArgumentException exception)
         {
