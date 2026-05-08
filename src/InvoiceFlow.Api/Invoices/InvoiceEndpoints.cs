@@ -1,3 +1,4 @@
+using InvoiceFlow.Api.ClientIdentity;
 using InvoiceFlow.Application.Documents;
 using InvoiceFlow.Application.Invoices;
 using Microsoft.Extensions.Options;
@@ -15,6 +16,7 @@ public static class InvoiceEndpoints
             .WithTags("Invoices");
 
         group.MapPost("/process", ProcessInvoiceAsync)
+            .RequireClientApiKeyWhenConfigured()
             .WithName("ProcessInvoiceDocument")
             .WithSummary("Processes an invoice document.")
             .WithDescription(
@@ -31,6 +33,9 @@ public static class InvoiceEndpoints
                 StatusCodes.Status400BadRequest,
                 "application/json")
             .Produces<ApiErrorResponse>(
+                StatusCodes.Status401Unauthorized,
+                "application/json")
+            .Produces<ApiErrorResponse>(
                 StatusCodes.Status413PayloadTooLarge,
                 "application/json")
             .Produces<ApiErrorResponse>(
@@ -38,6 +43,23 @@ public static class InvoiceEndpoints
                 "application/json")
             .WithOpenApi(operation =>
             {
+                operation.Security =
+                [
+                    new OpenApiSecurityRequirement
+                    {
+                        [
+                            new OpenApiSecurityScheme
+                            {
+                                Reference = new OpenApiReference
+                                {
+                                    Type = ReferenceType.SecurityScheme,
+                                    Id = "ApiKey"
+                                }
+                            }
+                        ] = []
+                    }
+                ];
+
                 operation.RequestBody = new OpenApiRequestBody
                 {
                     Required = true,

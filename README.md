@@ -81,6 +81,29 @@ InvoiceFlow currently includes:
 - API mapping for document extraction/provider failures
 - API mapping for invoice persistence failures
 - API full-pipeline regression coverage for invoice persistence failures
+- extraction analyzed page count propagation for usage and cost tracking
+- ProcessingRun usage audit model
+- ProcessingRun repository contract
+- in-memory ProcessingRun repository
+- default processing client context for local and MVP execution
+- API key based client identity contract
+- configured API key validator using SHA-256 key hashes
+- API key hash helper
+- API key identity options validation
+- API key identity Fluent Composition through `UseApiKeyClientIdentity(...)`
+- HTTP processing client context for resolving request client id
+- API key endpoint filter for `X-API-Key`
+- invoice processing endpoint protection when API key identity is configured
+- processing-run client id resolution from a valid API key
+- ProcessingRun decorator around `IInvoiceDocumentProcessor`
+- Fluent Composition registration for ProcessingRun audit infrastructure
+- ProcessingRun tests covering successful and failed processing attempts
+- API key based client identification through `X-API-Key`
+- Application API key validation contract returning a resolved `ClientId`
+- configured API key validator using SHA-256 key hashes
+- API key identity Fluent Composition through `UseApiKeyClientIdentity(...)`
+- invoice processing endpoint protection when API key identity is configured
+- API key identity integration tests proving `ProcessingRun.ClientId` is resolved from the API key
 - first API endpoint for document processing
 - health endpoint
 - Swagger/OpenAPI documentation
@@ -126,6 +149,7 @@ Document received
 → Invoice status is updated
 → Invoice is saved
 → Result is returned
+→ Processing run audit is recorded around the processing attempt
 ```
 
 ---
@@ -280,6 +304,12 @@ Current Application components:
 - `IInvoiceDocumentProcessor`
 - `ProcessInvoiceDocumentService`
 - `ProcessInvoiceDocumentResult`
+- `ProcessingRun`
+- `IProcessingRunRepository`
+- `IProcessingClientContext`
+- `IClientApiKeyValidator`
+- `ClientApiKeyValidationResult`
+- `ProcessingRunInvoiceDocumentProcessor`
 - `DocumentExtractionFailedException`
 - `InvoicePersistenceFailedException`
 
@@ -370,6 +400,8 @@ The Infrastructure layer currently contains MVP infrastructure implementations a
 - `InMemoryInvoiceRepository`
 - `AzureDocumentIntelligenceDocumentExtractor`
 - `AzureDocumentIntelligenceSdkClient`
+- `ConfiguredClientApiKeyValidator`
+- `ClientApiKeyHash`
 - `SqlServerInvoiceRepository`
 
 The in-memory implementations allow the full pipeline to run end-to-end without:
@@ -382,6 +414,10 @@ The in-memory implementations allow the full pipeline to run end-to-end without:
 The in-memory implementations are suitable for MVP, tests, demos, and local development.
 
 They are registered as singletons by the current composition setup and include basic thread-safety protection.
+
+The in-memory processing-run repository records processing attempts for local development, tests, and demos.
+
+It is not intended to replace a future SQL-backed usage ledger.
 
 The Azure Document Intelligence provider now has:
 
@@ -458,6 +494,7 @@ Current composition methods:
 - `AddInvoiceFlow()`
 - `AddInvoiceFlow(DateOnly validationDate)`
 - `UseInMemoryInfrastructure()`
+- `UseApiKeyClientIdentity(...)`
 - `UseAzureBlobDocumentStorage(...)`
 - `UseAzureBlobDocumentStorageIfConfigured()`
 - `UseDocumentExtractor<TDocumentExtractor>()`
@@ -706,6 +743,10 @@ It does not perform any Azure call during service registration.
 
 Real Azure smoke coverage is guarded by environment variables. One smoke test verifies the Azure extractor boundary directly. A second smoke test runs the full processing pipeline with Azure extraction, field mapping, deterministic validation, and in-memory invoice persistence.
 
+In addition, InvoiceFlow has completed a controlled 50-document live full-pipeline smoke test through the API using real Azure Document Intelligence, real Azure Blob Storage, SQL Server persistence, deterministic business validation, and stable API responses.
+
+In addition, InvoiceFlow has completed a controlled 50-document live full-pipeline smoke test through the API using real Azure Document Intelligence, real Azure Blob Storage, SQL Server persistence, deterministic business validation, and stable API responses.
+
 Azure provider options:
 
 - `Endpoint`
@@ -757,7 +798,7 @@ AzureDocumentIntelligenceDocumentExtractor
 → builds AzureDocumentIntelligenceAnalyzeRequest
 → passes ModelId, DocumentInput, and MinimumConfidenceThreshold to the internal Azure client
 → AzureDocumentIntelligenceSdkClient calls Azure Document Intelligence SDK
-→ returns ExtractedDocument with RawText and selected Fields
+→ returns ExtractedDocument with RawText, selected Fields, and analyzed page count when page metadata is available
 ```
 
 The current Azure SDK adapter maps selected Azure invoice fields into the internal `ExtractedDocument.Fields` dictionary:
@@ -852,6 +893,7 @@ The current SDK client behavior is intentionally focused:
 - passes the cancellation token
 - returns `AnalyzeResult.Content` as `ExtractedDocument.RawText`
 - maps selected Azure invoice fields into `ExtractedDocument.Fields`
+- maps analyzed page count from Azure result pages when available
 - ignores missing fields
 - ignores fields below `MinimumConfidenceThreshold`
 - extracts invoice currency from Azure money fields using a clear priority order
@@ -936,6 +978,36 @@ Future Azure-related slices may include:
 5. Add provider resilience such as retry policy or circuit breaker after real provider behavior is understood.
 
 Full invoice schema parsing should remain separate because it has its own business and regression risks.
+
+### Future Extraction Quality Findings
+
+During manual Swagger UI verification with a synthetic invoice PDF, the API successfully processed the document and returned a `Verified` invoice.
+
+Two extraction-quality findings were observed and intentionally left for a future provider quality slice:
+
+- the source document contained a vendor tax id, but the processed response returned `vendorTaxId` as `null`
+- the source document declared `Currency: ILS`, but the processed response returned `CAD`
+
+These findings do not block the current Developer Experience slice.
+
+They are not OpenAPI, Swagger, Postman, or API key issues.
+
+They belong to a future extraction quality and provider mapping review, where field extraction accuracy, currency normalization, and optional versus required business fields can be evaluated deliberately.
+
+### Future Extraction Quality Findings
+
+During manual Swagger UI verification with a synthetic invoice PDF, the API successfully processed the document and returned a `Verified` invoice.
+
+Two extraction-quality findings were observed and intentionally left for a future provider quality slice:
+
+- the source document contained a vendor tax id, but the processed response returned `vendorTaxId` as `null`
+- the source document declared `Currency: ILS`, but the processed response returned `CAD`
+
+These findings do not block the current Developer Experience slice.
+
+They are not OpenAPI, Swagger, Postman, or API key issues.
+
+They belong to a future extraction quality and provider mapping review, where field extraction accuracy, currency normalization, and optional versus required business fields can be evaluated deliberately.
 
 ---
 
@@ -1028,6 +1100,8 @@ POST /api/invoices/process
 → dbo.Invoices in InvoiceFlowDb
 ```
 
+A later 50-document live full-pipeline smoke test also verified SQL persistence as part of the complete API → Azure Blob Storage → Azure Document Intelligence → validation → SQL Server flow. The SQL invoice count increased by exactly 50 during that run.
+
 The optional SQL persistence tests run only when the following environment variable is defined:
 
 ```text
@@ -1082,6 +1156,14 @@ POST /api/invoices/process
 
 The invoice processing endpoint receives a file using `multipart/form-data`, creates a stream-ready `DocumentInput`, calls `IInvoiceDocumentProcessor`, and returns a structured response.
 
+When API key client identity is configured through `UseApiKeyClientIdentity(...)`, the same endpoint requires a valid `X-API-Key` header before the invoice processing pipeline is executed.
+
+A valid API key resolves the request client id and allows the processing-run audit decorator to save `ProcessingRun.ClientId` for usage tracking.
+
+The health endpoint remains public and is not protected by API key identity.
+
+In the default composed setup, `IInvoiceDocumentProcessor` is wrapped by a processing-run audit decorator before reaching the core `ProcessInvoiceDocumentService`.
+
 When Azure Blob Storage configuration is provided, the same endpoint stores the original uploaded document through `AzureBlobDocumentStorage`.
 
 When Azure Blob Storage configuration is missing, the API keeps the local `InMemoryDocumentStorage` setup for local demos and lightweight development.
@@ -1096,6 +1178,7 @@ The API layer does not contain business validation logic.
 
 It only handles HTTP and input-boundary concerns:
 
+- API key validation through `X-API-Key` when client identity is configured
 - multipart request validation
 - malformed form-data handling
 - file presence validation
@@ -1248,6 +1331,7 @@ Current API error examples:
 | `INVALID_FILE_SIGNATURE` | File bytes do not match the declared file type. |
 | `INVALID_FILE_NAME` | File name is missing or invalid. |
 | `INVALID_DOCUMENT` | Uploaded document failed input model validation. |
+| `INVALID_API_KEY` | API key is missing, inactive, unknown, or invalid. |
 | `DOCUMENT_STORAGE_FAILED` | Document storage failed because of an infrastructure or object storage error. |
 | `DOCUMENT_EXTRACTION_FAILED` | Document extraction failed because of an infrastructure or provider error. |
 | `INVOICE_PERSISTENCE_FAILED` | Invoice persistence failed because of an infrastructure or database error. |
@@ -1332,10 +1416,17 @@ Swagger currently documents:
 - `GET /health`
 - `POST /api/invoices/process`
 - multipart file upload
+- API key security scheme for `X-API-Key`
+- `POST /api/invoices/process` OpenAPI security requirement
 - `200 OK` processing response
 - `400 Bad Request` API errors
+- `401 Unauthorized` API key errors
 - `413 Payload Too Large` API errors
 - `503 Service Unavailable` document storage, document extraction/provider, and invoice persistence failures
+
+The invoice processing endpoint is documented as a protected endpoint in OpenAPI.
+
+The health endpoint remains public and does not require an API key.
 
 The OpenAPI metadata is covered by tests to prevent accidental regressions in developer experience.
 
@@ -1355,6 +1446,31 @@ Send it to the API:
 curl -i -X POST http://localhost:5030/api/invoices/process \
   -F "file=@/tmp/invoice.pdf;type=application/pdf"
 ```
+
+When API key client identity is enabled, include the API key header:
+
+```bash
+curl -i -X POST http://localhost:5030/api/invoices/process \
+  -H "X-API-Key: if_dev_valid-secret-key" \
+  -F "file=@/tmp/invoice.pdf;type=application/pdf"
+```
+
+If API key client identity is configured and the header is missing or invalid, the endpoint returns:
+
+```text
+HTTP/1.1 401 Unauthorized
+```
+
+with the stable machine-readable error code:
+
+```json
+{
+  "code": "INVALID_API_KEY",
+  "message": "..."
+}
+```
+
+Clients should use the code field for programmatic error handling.
 
 Expected result:
 
@@ -1379,6 +1495,34 @@ or:
 ```
 
 depending on the extracted invoice data and validation result.
+
+---
+
+## Postman Collection
+
+A minimal Postman collection is available at:
+
+```text
+docs/postman/InvoiceFlow.postman_collection.json
+```
+
+The collection is intentionally small and matches the current API surface.
+
+It includes:
+
+- public GET /health
+- POST /api/invoices/process with X-API-Key
+- POST /api/invoices/process without X-API-Key
+- POST /api/invoices/process with an invalid non-multipart content type
+
+The collection uses variables instead of hardcoded request values:
+
+- {{base_url}}
+- {{api_key}}
+
+This allows developers to switch between local, staging, and future hosted environments without editing every request.
+
+The collection does not document rate limiting, billing, login, OAuth, or JWT flows because those features are not part of the current API contract.
 
 ---
 
@@ -1589,6 +1733,23 @@ The project includes tests for:
 - Application exception wrapping for document storage failures
 - Application exception wrapping for document extraction failures
 - Application exception wrapping for invoice persistence failures
+- analyzed page count propagation from extraction result to processing result
+- ProcessingRun model validation
+- ProcessingRun repository contract
+- ProcessingRun decorator behavior for successful processing attempts
+- ProcessingRun decorator behavior for document storage, extraction, and persistence failures
+- ProcessingRun Fluent Composition registration
+- default processing client context registration
+- Application API key validation result contract
+- Application API key validator contract
+- configured API key validator behavior
+- API key hash generation
+- API key identity options validation
+- API key identity Fluent Composition
+- HTTP processing client context behavior
+- API key endpoint filter behavior
+- API key protected invoice endpoint integration behavior
+- OpenAPI `401 Unauthorized` metadata for the invoice processing endpoint
 - in-memory infrastructure
 - thread-safety behavior for in-memory storage/repository
 - Fluent DI composition
@@ -1664,18 +1825,23 @@ dotnet test
 ```text
 src/
   InvoiceFlow.Api/
+    ClientIdentity/
     Health/
     Invoices/
   InvoiceFlow.Application/
+    ClientIdentity/
     Documents/
     Invoices/
+    ProcessingRuns/
   InvoiceFlow.Domain/
     Invoices/
     ValueObjects/
   InvoiceFlow.Infrastructure/
+    ClientIdentity/
     DependencyInjection/
     Documents/
     Invoices/
+    ProcessingRuns/
 
 database/
   001_create_invoices_table.sql
@@ -1716,6 +1882,14 @@ The current MVP includes:
 - application exception wrapping for document storage failures
 - application exception wrapping for document extraction failures
 - application exception wrapping for invoice persistence failures
+- analyzed page count on extracted documents
+- analyzed page count propagation to processing results
+- ProcessingRun usage audit model
+- ProcessingRun repository contract
+- ProcessingRun audit decorator around `IInvoiceDocumentProcessor`
+- default processing client context for local and MVP execution
+- in-memory ProcessingRun repository
+- ProcessingRun Fluent Composition registration
 - in-memory document storage provider Fluent registration
 - Azure Blob Storage provider options validation
 - Azure Blob Storage document upload through Azure Storage Blobs SDK
@@ -1783,6 +1957,9 @@ The following features are intentionally not implemented yet:
 - OpenAI Vision integration
 - SQL repository read, update, and query operations
 - automated database migrations
+- SQL-backed ProcessingRun persistence
+- per-client rate limiting
+- automated billing integration
 - authentication
 - authorization
 - dashboard / review UI
@@ -1799,7 +1976,7 @@ The following features are intentionally not implemented yet:
 
 These are future steps.
 
-The current focus is a clean, testable processing core with a thin API adapter, developer-friendly composition setup, a stream-ready document input contract, a first real Azure Document Intelligence mapping slice for the fields needed by the MVP, verified configuration-based provider selection for Azure, real Azure extractor and full-pipeline smoke coverage, Azure Blob document storage verified against Azurite, and a verified SQL-backed invoice persistence slice from API to database.
+The current focus is a clean, testable processing core with a thin API adapter, developer-friendly composition setup, a stream-ready document input contract, a first real Azure Document Intelligence mapping slice for the fields needed by the MVP, verified configuration-based provider selection for Azure, real Azure extractor and full-pipeline smoke coverage, Azure Blob document storage verified against Azurite, a verified SQL-backed invoice persistence slice from API to database, a lightweight processing-run usage audit foundation for future SaaS readiness, and API key based client identity for resolving real client ids on protected invoice processing requests.
 
 ---
 

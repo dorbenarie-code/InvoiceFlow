@@ -26,6 +26,18 @@ builder.Services.AddSwaggerGen(options =>
                 "runs deterministic business validation, and returns either a verified invoice " +
                 "or a structured result that requires human review."
         });
+
+    options.AddSecurityDefinition(
+        "ApiKey",
+        new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            Name = "X-API-Key",
+            In = ParameterLocation.Header,
+            Description =
+                "API key required for protected InvoiceFlow endpoints. " +
+                "Send the key in the X-API-Key request header."
+        });
 });
 
 builder.Services

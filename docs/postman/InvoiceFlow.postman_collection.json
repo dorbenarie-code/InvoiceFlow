@@ -1,0 +1,143 @@
+{
+  "info": {
+    "name": "InvoiceFlow API",
+    "description": "Minimal Postman collection for the current InvoiceFlow API surface. It covers health checks, invoice document processing with X-API-Key, missing API key behavior, and invalid content type behavior.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5030",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "if_dev_valid-secret-key",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health - public",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "description": "Public health endpoint. This endpoint does not require X-API-Key."
+      }
+    },
+    {
+      "name": "Process invoice - valid API key",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{api_key}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "/tmp/invoice.pdf",
+              "description": "Select a local PDF, JPG, or PNG invoice document. For local smoke testing, you can create /tmp/invoice.pdf with: printf '%s\\n' '%PDF-1.7 fake invoice content' > /tmp/invoice.pdf"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/invoices/process",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "invoices",
+            "process"
+          ]
+        },
+        "description": "Processes an invoice or receipt document using multipart/form-data and a valid X-API-Key header."
+      }
+    },
+    {
+      "name": "Process invoice - missing API key",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "/tmp/invoice.pdf",
+              "description": "Same upload request as the valid API key flow, but without X-API-Key. Expected response when API key identity is configured: 401 with INVALID_API_KEY."
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/invoices/process",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "invoices",
+            "process"
+          ]
+        },
+        "description": "Verifies that a protected invoice processing request without X-API-Key returns 401 INVALID_API_KEY when API key identity is configured."
+      }
+    },
+    {
+      "name": "Process invoice - invalid content type",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/invoices/process",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "invoices",
+            "process"
+          ]
+        },
+        "description": "Verifies upload boundary behavior for a non-multipart request. Expected response: 400 INVALID_CONTENT_TYPE."
+      }
+    }
+  ]
+}
