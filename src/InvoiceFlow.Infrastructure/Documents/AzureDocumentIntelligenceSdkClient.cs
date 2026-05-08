@@ -47,7 +47,16 @@ internal sealed class AzureDocumentIntelligenceSdkClient
 
         return new ExtractedDocument(
             rawText,
-            fields);
+            fields,
+            analyzedPageCount: GetAnalyzedPageCount(analyzeResult));
+    }
+
+    private static int? GetAnalyzedPageCount(
+        AnalyzeResult analyzeResult)
+    {
+        return analyzeResult.Pages.Count == 0
+            ? null
+            : analyzeResult.Pages.Count;
     }
 
     private static IReadOnlyDictionary<string, string> MapInvoiceFields(

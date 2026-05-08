@@ -745,8 +745,6 @@ Real Azure smoke coverage is guarded by environment variables. One smoke test ve
 
 In addition, InvoiceFlow has completed a controlled 50-document live full-pipeline smoke test through the API using real Azure Document Intelligence, real Azure Blob Storage, SQL Server persistence, deterministic business validation, and stable API responses.
 
-In addition, InvoiceFlow has completed a controlled 50-document live full-pipeline smoke test through the API using real Azure Document Intelligence, real Azure Blob Storage, SQL Server persistence, deterministic business validation, and stable API responses.
-
 Azure provider options:
 
 - `Endpoint`

@@ -14,13 +14,18 @@ public sealed record ProcessInvoiceDocumentResult
 
     public Invoice Invoice { get; }
 
+    public int? AnalyzedPageCount { get; }
+
     public ProcessInvoiceDocumentResult(
         Guid documentId,
-        Invoice invoice)
+        Invoice invoice,
+        int? analyzedPageCount = null)
     {
         if (documentId == Guid.Empty)
         {
-            throw new ArgumentException("Document id is required.", nameof(documentId));
+            throw new ArgumentException(
+                "Document id is required.",
+                nameof(documentId));
         }
 
         ArgumentNullException.ThrowIfNull(invoice);
@@ -31,6 +36,15 @@ public sealed record ProcessInvoiceDocumentResult
                 "Invoice source document id must match the stored document id.");
         }
 
+        if (analyzedPageCount.HasValue && analyzedPageCount.Value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(analyzedPageCount),
+                analyzedPageCount,
+                "Analyzed page count must be greater than zero when provided.");
+        }
+
         Invoice = invoice;
+        AnalyzedPageCount = analyzedPageCount;
     }
 }

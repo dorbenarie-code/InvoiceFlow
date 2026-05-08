@@ -3,9 +3,11 @@ using Azure;
 using Azure.AI.DocumentIntelligence;
 using InvoiceFlow.Application.Documents;
 using InvoiceFlow.Application.Invoices;
+using InvoiceFlow.Application.ProcessingRuns;
 using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Infrastructure.Documents;
 using InvoiceFlow.Infrastructure.Invoices;
+using InvoiceFlow.Infrastructure.ProcessingRuns;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -339,6 +341,8 @@ public static class InvoiceFlowServiceCollectionExtensions
         services.TryAddSingleton<IDocumentExtractor, FakeDocumentExtractor>();
         services.TryAddSingleton<IInvoiceMapper, FieldBasedInvoiceMapper>();
         services.TryAddSingleton<IInvoiceRepository, InMemoryInvoiceRepository>();
+        services.TryAddSingleton<IProcessingRunRepository, InMemoryProcessingRunRepository>();
+        services.TryAddSingleton<IProcessingClientContext, DefaultProcessingClientContext>();
 
         return services;
     }
@@ -404,7 +408,15 @@ public static class InvoiceFlowServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(validationDateProvider);
 
-        services.TryAddScoped<IInvoiceDocumentProcessor, ProcessInvoiceDocumentService>();
+        services.TryAddScoped<ProcessInvoiceDocumentService>();
+        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+
+        services.TryAddScoped<IInvoiceDocumentProcessor>(serviceProvider =>
+            new ProcessingRunInvoiceDocumentProcessor(
+                serviceProvider.GetRequiredService<ProcessInvoiceDocumentService>(),
+                serviceProvider.GetRequiredService<IProcessingRunRepository>(),
+                serviceProvider.GetRequiredService<IProcessingClientContext>(),
+                serviceProvider.GetRequiredService<TimeProvider>()));
 
         services.TryAddScoped<IInvoiceValidator>(_ =>
             new DefaultInvoiceValidator(validationDateProvider()));

@@ -41,6 +41,7 @@ public sealed class FakeDocumentExtractor : IDocumentExtractor
                 ["VatAmount"] = "180",
                 ["TotalAmount"] = "1180",
                 ["Currency"] = "ILS"
-            });
+            },
+            analyzedPageCount: 1);
     }
 }

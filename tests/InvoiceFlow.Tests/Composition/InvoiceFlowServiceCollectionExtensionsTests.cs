@@ -54,7 +54,11 @@ public void UseDocumentExtractor_ShouldReturnSameBuilder_ForMethodChaining()
 
         services.AddInvoiceFlowCore(ValidationDate);
 
-        AssertSingleRegistration<IInvoiceDocumentProcessor, ProcessInvoiceDocumentService>(
+        AssertSingleRegistration<ProcessInvoiceDocumentService, ProcessInvoiceDocumentService>(
+            services,
+            ServiceLifetime.Scoped);
+
+        AssertSingleFactoryRegistration<IInvoiceDocumentProcessor>(
             services,
             ServiceLifetime.Scoped);
 

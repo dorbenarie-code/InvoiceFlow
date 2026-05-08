@@ -124,6 +124,7 @@ public sealed class ProcessInvoiceDocumentService : IInvoiceDocumentProcessor
 
         return new ProcessInvoiceDocumentResult(
             storedDocument.Id,
-            invoice);
+            invoice,
+            extractedDocument.AnalyzedPageCount);
     }
 }
