@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "InvoiceFlow API",
-    "description": "Minimal Postman collection for the current InvoiceFlow API surface. It covers health checks, invoice document processing with X-API-Key, missing API key behavior, and invalid content type behavior.",
+    "description": "Minimal Postman collection for the current InvoiceFlow API surface. It covers health checks, invoice document processing with X-API-Key, missing API key behavior, invalid content type behavior, and local rate limit verification when API key identity and client rate limiting are configured.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13,6 +13,11 @@
     {
       "key": "api_key",
       "value": "if_dev_valid-secret-key",
+      "type": "string"
+    },
+    {
+      "key": "invoice_file_path",
+      "value": "/tmp/invoice.pdf",
       "type": "string"
     }
   ],
@@ -51,8 +56,8 @@
             {
               "key": "file",
               "type": "file",
-              "src": "/tmp/invoice.pdf",
-              "description": "Select a local PDF, JPG, or PNG invoice document. For local smoke testing, you can create /tmp/invoice.pdf with: printf '%s\\n' '%PDF-1.7 fake invoice content' > /tmp/invoice.pdf"
+              "src": "{{invoice_file_path}}",
+              "description": "Select a local PDF, JPG, or PNG invoice document. The default collection variable points to /tmp/invoice.pdf. For local smoke testing, create it with: printf '%s\\n' '%PDF-1.7 fake invoice content' > /tmp/invoice.pdf"
             }
           ]
         },
@@ -81,8 +86,8 @@
             {
               "key": "file",
               "type": "file",
-              "src": "/tmp/invoice.pdf",
-              "description": "Same upload request as the valid API key flow, but without X-API-Key. Expected response when API key identity is configured: 401 with INVALID_API_KEY."
+              "src": "{{invoice_file_path}}",
+              "description": "Select a local PDF, JPG, or PNG invoice document. The default collection variable points to /tmp/invoice.pdf. For local smoke testing, create it with: printf '%s\\n' '%PDF-1.7 fake invoice content' > /tmp/invoice.pdf"
             }
           ]
         },
@@ -138,6 +143,60 @@
         },
         "description": "Verifies upload boundary behavior for a non-multipart request. Expected response: 400 INVALID_CONTENT_TYPE."
       }
+    },
+    {
+      "name": "Process invoice - rate limit exceeded",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{api_key}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "{{invoice_file_path}}",
+              "description": "Use the same invoice file as the valid API key flow. To verify rate limiting locally, run the API with API key identity configured and ClientRateLimiting configured with a low limit, for example PermitLimit=1 and Window=00:10:00. Send one valid request first, then send this request. Expected response: 429 RATE_LIMIT_EXCEEDED."
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/invoices/process",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "invoices",
+            "process"
+          ]
+        },
+        "description": "Verifies local per-client rate limit behavior. This request is expected to return 429 with RATE_LIMIT_EXCEEDED after the same API key has already consumed the configured request limit for POST /api/invoices/process. This scenario requires API key identity and InvoiceFlow:ClientRateLimiting to be configured."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"returns 429 Too Many Requests\", function () {",
+              "    pm.response.to.have.status(429);",
+              "});",
+              "",
+              "pm.test(\"returns RATE_LIMIT_EXCEEDED\", function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.code).to.eql(\"RATE_LIMIT_EXCEEDED\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
     }
   ]
 }

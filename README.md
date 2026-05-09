@@ -1555,24 +1555,96 @@ docs/postman/InvoiceFlow.postman_collection.json
 ```
 
 The collection is intentionally small and matches the current API surface.
-
 It includes:
 
 - public GET /health
 - POST /api/invoices/process with X-API-Key
 - POST /api/invoices/process without X-API-Key
 - POST /api/invoices/process with an invalid non-multipart content type
+- Process invoice - rate limit exceeded
 
 The collection uses variables instead of hardcoded request values:
 
 - {{base_url}}
 - {{api_key}}
+- {{invoice_file_path}}
 
 This allows developers to switch between local, staging, and future hosted environments without editing every request.
+The rate-limit request is intended for local verification when API key identity and client rate limiting are configured.
+It verifies that a valid client can consume the configured request limit and that the next request can return:
 
-The collection does not yet include a dedicated rate-limit scenario.
+```text
+429 Too Many Requests
+```
 
-It also does not document billing, login, OAuth, or JWT flows because those features are not part of the current API contract.
+with the stable machine-readable error code:
+
+```json
+{
+  "code": "RATE_LIMIT_EXCEEDED",
+  "message": "Rate limit exceeded. Please try again later."
+}
+```
+
+The collection does not document billing, login, OAuth, or JWT flows because those features are not part of the current API contract.
+
+---
+
+## Manual Rate Limit Verification
+
+InvoiceFlow includes a local manual verification script for the client rate limiting contract:
+
+```text
+scripts/manual/verify-rate-limit.sh
+```
+
+The script is intentionally not part of the regular automated test suite.
+It is used when the API is already running locally with:
+
+- API key identity configured
+- InvoiceFlow:ClientRateLimiting configured
+- a low per-client limit, for example PermitLimit=1
+- a valid invoice file available on disk
+
+Required environment variables:
+
+```bash
+export INVOICEFLOW_BASE_URL="http://localhost:5030"
+export INVOICEFLOW_API_KEY="<local-api-key>"
+export INVOICEFLOW_INVOICE_FILE="/tmp/invoice.pdf"
+
+Run:
+
+scripts/manual/verify-rate-limit.sh
+```
+
+The script sends two `POST /api/invoices/process` requests with the same `X-API-Key`.
+Expected behavior:
+
+- Request 1 → 200 OK
+- Request 2 → 429 Too Many Requests
+
+The second response must contain:
+
+```text
+RATE_LIMIT_EXCEEDED
+```
+
+When the script is executed, it writes local manual verification evidence under:
+
+```text
+docs/evidence/rate-limiting
+```
+
+The generated evidence includes:
+
+- README.md
+- summary.json
+- request-01-response.txt
+- request-02-response.txt
+
+This evidence is created only by an actual local manual verification run.
+It should not be committed as proof unless the script was really executed against a configured local API host.
 
 ---
 
@@ -2008,7 +2080,6 @@ The following features are intentionally not implemented yet:
 - SQL repository read, update, and query operations
 - automated database migrations
 - SQL-backed ProcessingRun persistence
-- per-client rate limiting
 - automated billing integration
 - authentication
 - authorization
