@@ -124,6 +124,45 @@ public sealed class InvoiceApiKeyOpenApiTests
     }
 
     [Fact]
+    public async Task SwaggerJson_ShouldDocumentTooManyRequestsResponseForProcessInvoiceEndpoint()
+    {
+        await using var factory = CreateFactory();
+
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/swagger/v1/swagger.json");
+
+        response.EnsureSuccessStatusCode();
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        using var json = JsonDocument.Parse(responseBody);
+
+        var root = json.RootElement;
+
+        var postOperation = root
+            .GetProperty("paths")
+            .GetProperty("/api/invoices/process")
+            .GetProperty("post");
+
+        Assert.True(
+            postOperation.TryGetProperty("responses", out var responses),
+            "POST /api/invoices/process should declare OpenAPI responses.");
+
+        Assert.True(
+            responses.TryGetProperty("429", out var tooManyRequestsResponse),
+            "POST /api/invoices/process should document 429 Too Many Requests.");
+
+        Assert.True(
+            tooManyRequestsResponse.TryGetProperty("content", out var content),
+            "429 Too Many Requests should document a response body content type.");
+
+        Assert.True(
+            content.TryGetProperty("application/json", out _),
+            "429 Too Many Requests should document the ApiErrorResponse JSON contract.");
+    }
+
+    [Fact]
     public async Task SwaggerJson_ShouldNotMarkHealthEndpointAsRequiringApiKey()
     {
         await using var factory = CreateFactory();

@@ -104,6 +104,13 @@ InvoiceFlow currently includes:
 - API key identity Fluent Composition through `UseApiKeyClientIdentity(...)`
 - invoice processing endpoint protection when API key identity is configured
 - API key identity integration tests proving `ProcessingRun.ClientId` is resolved from the API key
+- Application per-client rate limiting contract
+- in-memory per-client fixed-window rate limiter backed by .NET rate limiting primitives
+- client rate limiting Fluent Composition through `UseClientRateLimiting(...)`
+- API client rate limiting configuration through `InvoiceFlow:ClientRateLimiting`
+- API endpoint filter returning `429 Too Many Requests` when a client exceeds the configured limit
+- API integration tests proving API key validation runs before client rate limiting and invoice processing
+- OpenAPI documentation for `429 Too Many Requests`
 - first API endpoint for document processing
 - health endpoint
 - Swagger/OpenAPI documentation
@@ -309,6 +316,8 @@ Current Application components:
 - `IProcessingClientContext`
 - `IClientApiKeyValidator`
 - `ClientApiKeyValidationResult`
+- `IClientRateLimiter`
+- `ClientRateLimitResult`
 - `ProcessingRunInvoiceDocumentProcessor`
 - `DocumentExtractionFailedException`
 - `InvoicePersistenceFailedException`
@@ -402,6 +411,8 @@ The Infrastructure layer currently contains MVP infrastructure implementations a
 - `AzureDocumentIntelligenceSdkClient`
 - `ConfiguredClientApiKeyValidator`
 - `ClientApiKeyHash`
+- `InMemoryClientRateLimiter`
+- `ClientRateLimitOptions`
 - `SqlServerInvoiceRepository`
 
 The in-memory implementations allow the full pipeline to run end-to-end without:
@@ -418,6 +429,16 @@ They are registered as singletons by the current composition setup and include b
 The in-memory processing-run repository records processing attempts for local development, tests, and demos.
 
 It is not intended to replace a future SQL-backed usage ledger.
+
+The in-memory client rate limiter provides per-client request limiting for the API MVP.
+
+It uses built-in .NET rate limiting primitives instead of implementing manual counters, locks, or time-window logic.
+
+The current limiter is process-local.
+
+It is suitable for local development, tests, demos, and a single-instance MVP host.
+
+It is not intended to replace a future distributed limiter if the API is scaled across multiple instances.
 
 The Azure Document Intelligence provider now has:
 
@@ -495,6 +516,7 @@ Current composition methods:
 - `AddInvoiceFlow(DateOnly validationDate)`
 - `UseInMemoryInfrastructure()`
 - `UseApiKeyClientIdentity(...)`
+- `UseClientRateLimiting(...)`
 - `UseAzureBlobDocumentStorage(...)`
 - `UseAzureBlobDocumentStorageIfConfigured()`
 - `UseDocumentExtractor<TDocumentExtractor>()`
@@ -1158,7 +1180,11 @@ When API key client identity is configured through `UseApiKeyClientIdentity(...)
 
 A valid API key resolves the request client id and allows the processing-run audit decorator to save `ProcessingRun.ClientId` for usage tracking.
 
-The health endpoint remains public and is not protected by API key identity.
+When client rate limiting is configured, the invoice processing endpoint applies per-client rate limiting after API key validation and before invoice processing.
+
+If the configured limit is exceeded, the API returns `429 Too Many Requests` with a stable `RATE_LIMIT_EXCEEDED` error body and does not execute the invoice processor.
+
+The health endpoint remains public and is not protected by API key identity or client rate limiting.
 
 In the default composed setup, `IInvoiceDocumentProcessor` is wrapped by a processing-run audit decorator before reaching the core `ProcessInvoiceDocumentService`.
 
@@ -1177,6 +1203,7 @@ The API layer does not contain business validation logic.
 It only handles HTTP and input-boundary concerns:
 
 - API key validation through `X-API-Key` when client identity is configured
+- per-client rate limiting when client identity and rate limiting are configured
 - multipart request validation
 - malformed form-data handling
 - file presence validation
@@ -1330,6 +1357,7 @@ Current API error examples:
 | `INVALID_FILE_NAME` | File name is missing or invalid. |
 | `INVALID_DOCUMENT` | Uploaded document failed input model validation. |
 | `INVALID_API_KEY` | API key is missing, inactive, unknown, or invalid. |
+| `RATE_LIMIT_EXCEEDED` | Valid API key exceeded the configured per-client request limit. |
 | `DOCUMENT_STORAGE_FAILED` | Document storage failed because of an infrastructure or object storage error. |
 | `DOCUMENT_EXTRACTION_FAILED` | Document extraction failed because of an infrastructure or provider error. |
 | `INVOICE_PERSISTENCE_FAILED` | Invoice persistence failed because of an infrastructure or database error. |
@@ -1369,6 +1397,27 @@ RequiresHumanReview
 ```
 
 `RequiresHumanReview` is reserved only for documents that were successfully extracted and mapped, but failed deterministic business validation.
+
+`RATE_LIMIT_EXCEEDED` is an API usage-control response.
+
+It means the API key was valid, the client id was resolved, and the client exceeded the configured rate limit for the invoice processing endpoint.
+
+In that case, the API returns:
+
+```text
+429 Too Many Requests
+```
+
+with:
+
+```json
+{
+  "code": "RATE_LIMIT_EXCEEDED",
+  "message": "Rate limit exceeded. Please try again later."
+}
+```
+
+The invoice processor is not executed for blocked requests.
 
 `INVOICE_PERSISTENCE_FAILED` is also treated as a system/infrastructure failure, not as a business validation result.
 
@@ -1419,6 +1468,7 @@ Swagger currently documents:
 - `200 OK` processing response
 - `400 Bad Request` API errors
 - `401 Unauthorized` API key errors
+- `429 Too Many Requests` client rate limit errors
 - `413 Payload Too Large` API errors
 - `503 Service Unavailable` document storage, document extraction/provider, and invoice persistence failures
 
@@ -1520,7 +1570,9 @@ The collection uses variables instead of hardcoded request values:
 
 This allows developers to switch between local, staging, and future hosted environments without editing every request.
 
-The collection does not document rate limiting, billing, login, OAuth, or JWT flows because those features are not part of the current API contract.
+The collection does not yet include a dedicated rate-limit scenario.
+
+It also does not document billing, login, OAuth, or JWT flows because those features are not part of the current API contract.
 
 ---
 

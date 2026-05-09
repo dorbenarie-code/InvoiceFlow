@@ -1,7 +1,9 @@
 using InvoiceFlow.Application.Documents;
 using InvoiceFlow.Infrastructure.Documents;
+using InvoiceFlow.Infrastructure.ClientRateLimiting;
 using InvoiceFlow.Api.Health;
 using InvoiceFlow.Api.Invoices;
+using InvoiceFlow.Api.ClientRateLimiting;
 using InvoiceFlow.Application.Invoices;
 using InvoiceFlow.Infrastructure.Invoices;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -49,10 +51,21 @@ builder.Services
         "Maximum invoice document file size must be greater than zero.")
     .ValidateOnStart();
 
-builder.Services
+var invoiceFlowBuilder = builder.Services
     .AddInvoiceFlow()
     .UseInMemoryInfrastructure()
     .UseAzureDocumentIntelligenceIfConfigured();
+
+var clientRateLimitingSection = builder.Configuration.GetSection(
+    ClientRateLimitOptions.ConfigurationSectionName);
+
+if (clientRateLimitingSection.Exists())
+{
+    invoiceFlowBuilder.UseClientRateLimiting(options =>
+    {
+        clientRateLimitingSection.Bind(options);
+    });
+}
 
 builder.Services
     .AddOptions<AzureBlobDocumentStorageOptions>()

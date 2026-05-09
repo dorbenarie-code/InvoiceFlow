@@ -1,4 +1,5 @@
 using InvoiceFlow.Api.ClientIdentity;
+using InvoiceFlow.Api.ClientRateLimiting;
 using InvoiceFlow.Application.Documents;
 using InvoiceFlow.Application.Invoices;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,7 @@ public static class InvoiceEndpoints
 
         group.MapPost("/process", ProcessInvoiceAsync)
             .RequireClientApiKeyWhenConfigured()
+            .RequireClientRateLimitWhenConfigured()
             .WithName("ProcessInvoiceDocument")
             .WithSummary("Processes an invoice document.")
             .WithDescription(
@@ -34,6 +36,9 @@ public static class InvoiceEndpoints
                 "application/json")
             .Produces<ApiErrorResponse>(
                 StatusCodes.Status401Unauthorized,
+                "application/json")
+            .Produces<ApiErrorResponse>(
+                StatusCodes.Status429TooManyRequests,
                 "application/json")
             .Produces<ApiErrorResponse>(
                 StatusCodes.Status413PayloadTooLarge,
