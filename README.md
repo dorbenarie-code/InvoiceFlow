@@ -10,6 +10,14 @@ The goal is to give .NET developers a clean, reusable invoice-processing foundat
 
 ---
 
+## Portfolio Overview
+
+For a shorter portfolio-oriented overview, start with [InvoiceFlow Portfolio](docs/portfolio/README.md).
+
+It links to the case study, architecture overview, and current proof points without requiring the full technical README first.
+
+---
+
 ## Product Vision
 
 InvoiceFlow is built around one core idea:
@@ -91,6 +99,8 @@ InvoiceFlow currently includes:
 - API key hash helper
 - API key identity options validation
 - API key identity Fluent Composition through `UseApiKeyClientIdentity(...)`
+- API key client identity configuration through `InvoiceFlow:ClientIdentity`
+- API startup tests proving API key client identity is bound from configuration
 - HTTP processing client context for resolving request client id
 - API key endpoint filter for `X-API-Key`
 - invoice processing endpoint protection when API key identity is configured
@@ -104,12 +114,15 @@ InvoiceFlow currently includes:
 - API key identity Fluent Composition through `UseApiKeyClientIdentity(...)`
 - invoice processing endpoint protection when API key identity is configured
 - API key identity integration tests proving `ProcessingRun.ClientId` is resolved from the API key
+- API client identity configuration binding from `InvoiceFlow:ClientIdentity`
+- API startup validation for configured client identity options
 - Application per-client rate limiting contract
 - in-memory per-client fixed-window rate limiter backed by .NET rate limiting primitives
 - client rate limiting Fluent Composition through `UseClientRateLimiting(...)`
 - API client rate limiting configuration through `InvoiceFlow:ClientRateLimiting`
 - API endpoint filter returning `429 Too Many Requests` when a client exceeds the configured limit
 - API integration tests proving API key validation runs before client rate limiting and invoice processing
+- API integration test proving client identity and client rate limiting are both bound from configuration
 - OpenAPI documentation for `429 Too Many Requests`
 - first API endpoint for document processing
 - health endpoint
@@ -1014,21 +1027,6 @@ They are not OpenAPI, Swagger, Postman, or API key issues.
 
 They belong to a future extraction quality and provider mapping review, where field extraction accuracy, currency normalization, and optional versus required business fields can be evaluated deliberately.
 
-### Future Extraction Quality Findings
-
-During manual Swagger UI verification with a synthetic invoice PDF, the API successfully processed the document and returned a `Verified` invoice.
-
-Two extraction-quality findings were observed and intentionally left for a future provider quality slice:
-
-- the source document contained a vendor tax id, but the processed response returned `vendorTaxId` as `null`
-- the source document declared `Currency: ILS`, but the processed response returned `CAD`
-
-These findings do not block the current Developer Experience slice.
-
-They are not OpenAPI, Swagger, Postman, or API key issues.
-
-They belong to a future extraction quality and provider mapping review, where field extraction accuracy, currency normalization, and optional versus required business fields can be evaluated deliberately.
-
 ---
 
 ## SQL Server Persistence
@@ -1176,9 +1174,11 @@ POST /api/invoices/process
 
 The invoice processing endpoint receives a file using `multipart/form-data`, creates a stream-ready `DocumentInput`, calls `IInvoiceDocumentProcessor`, and returns a structured response.
 
-When API key client identity is configured through `UseApiKeyClientIdentity(...)`, the same endpoint requires a valid `X-API-Key` header before the invoice processing pipeline is executed.
+When API key client identity is configured either through `UseApiKeyClientIdentity(...)` or through the API host configuration section `InvoiceFlow:ClientIdentity`, the same endpoint requires a valid `X-API-Key` header before the invoice processing pipeline is executed.
 
 A valid API key resolves the request client id and allows the processing-run audit decorator to save `ProcessingRun.ClientId` for usage tracking.
+
+For hosted API execution, configured clients can be loaded from appsettings, user-secrets, or environment variables. The configuration stores the client id, a SHA-256 API key hash, the allowed key prefix, and whether the client is active. It does not store raw API keys.
 
 When client rate limiting is configured, the invoice processing endpoint applies per-client rate limiting after API key validation and before invoice processing.
 
@@ -1329,6 +1329,79 @@ The API validates upload options on startup.
 Invalid configuration, such as a maximum file size of `0`, causes the application to fail fast instead of starting with broken settings.
 
 The test host also provides a valid upload configuration explicitly, so API integration tests remain deterministic even when the regular application settings file is not loaded by the test environment.
+
+---
+
+## API Key Client Identity Configuration
+
+The API host can enable API key based client identity through configuration.
+
+This is the hosted API equivalent of explicit Fluent Composition with `UseApiKeyClientIdentity(...)`.
+
+Example configuration shape:
+
+```json
+{
+  "InvoiceFlow": {
+    "ClientIdentity": {
+      "Clients": [
+        {
+          "ClientId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "KeyHash": "<sha256-hash-of-api-key>",
+          "KeyPrefix": "if_dev_",
+          "IsActive": true
+        }
+      ]
+    }
+  }
+}
+```
+
+The raw API key is not stored in configuration.
+
+Only its SHA-256 hash is stored.
+
+The incoming `X-API-Key` value is hashed during validation and compared to the configured hash.
+
+A local hash can be generated from a temporary shell variable:
+
+```bash
+read -s INVOICEFLOW_LOCAL_API_KEY
+printf '%s' "$INVOICEFLOW_LOCAL_API_KEY" | sha256sum | awk '{print $1}'
+unset INVOICEFLOW_LOCAL_API_KEY
+```
+
+For local API execution, store client identity settings with user-secrets:
+
+```bash
+dotnet user-secrets set "InvoiceFlow:ClientIdentity:Clients:0:ClientId" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" --project src/InvoiceFlow.Api/InvoiceFlow.Api.csproj
+
+dotnet user-secrets set "InvoiceFlow:ClientIdentity:Clients:0:KeyHash" "<sha256-hash-of-api-key>" --project src/InvoiceFlow.Api/InvoiceFlow.Api.csproj
+```
+
+The same configuration can also be provided through environment variables:
+
+```bash
+export InvoiceFlow__ClientIdentity__Clients__0__ClientId="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+export InvoiceFlow__ClientIdentity__Clients__0__KeyHash="<sha256-hash-of-api-key>"
+export InvoiceFlow__ClientIdentity__Clients__0__KeyPrefix="if_dev_"
+export InvoiceFlow__ClientIdentity__Clients__0__IsActive="true"
+```
+
+When `InvoiceFlow:ClientIdentity` is missing, the invoice processing endpoint is not protected by API key identity.
+
+When the section exists, the API registers the configured API key validator, resolves the request `ClientId` from a valid `X-API-Key`, and allows per-client rate limiting to use that resolved client id.
+
+Invalid client identity configuration fails startup through options validation.
+
+For example:
+
+- missing client id
+- missing key prefix
+- missing key hash
+- key hash that is not a SHA-256 hex string
+
+This keeps local development simple while still allowing the real API host to run with configured clients.
 
 ---
 
@@ -1601,20 +1674,56 @@ scripts/manual/verify-rate-limit.sh
 The script is intentionally not part of the regular automated test suite.
 It is used when the API is already running locally with:
 
-- API key identity configured
-- InvoiceFlow:ClientRateLimiting configured
+- API key client identity configured through InvoiceFlow:ClientIdentity
+- client rate limiting configured through InvoiceFlow:ClientRateLimiting
 - a low per-client limit, for example PermitLimit=1
+- a valid local API key whose SHA-256 hash matches the configured client
 - a valid invoice file available on disk
 
-Required environment variables:
+For a local rate-limit verification run, configure client rate limiting with user-secrets:
+
+```bash
+dotnet user-secrets set \
+  "InvoiceFlow:ClientRateLimiting:PermitLimit" \
+  "1" \
+  --project src/InvoiceFlow.Api/InvoiceFlow.Api.csproj
+
+dotnet user-secrets set \
+  "InvoiceFlow:ClientRateLimiting:Window" \
+  "00:10:00" \
+  --project src/InvoiceFlow.Api/InvoiceFlow.Api.csproj
+```
+
+The same values can also be provided with environment variables:
+
+```bash
+export InvoiceFlow__ClientRateLimiting__PermitLimit="1"
+export InvoiceFlow__ClientRateLimiting__Window="00:10:00"
+```
+
+Create a small local PDF-like test file:
+
+```bash
+printf '%s\n' '%PDF-1.7 fake invoice content' > /tmp/invoice.pdf
+```
+
+Run the API locally:
+
+```bash
+dotnet run --project src/InvoiceFlow.Api/InvoiceFlow.Api.csproj
+```
+
+In another terminal, configure the verification script inputs:
 
 ```bash
 export INVOICEFLOW_BASE_URL="http://localhost:5030"
 export INVOICEFLOW_API_KEY="<local-api-key>"
 export INVOICEFLOW_INVOICE_FILE="/tmp/invoice.pdf"
+```
 
-Run:
+Then run:
 
+```bash
 scripts/manual/verify-rate-limit.sh
 ```
 
@@ -2081,8 +2190,8 @@ The following features are intentionally not implemented yet:
 - automated database migrations
 - SQL-backed ProcessingRun persistence
 - automated billing integration
-- authentication
-- authorization
+- full user authentication
+- role-based authorization
 - dashboard / review UI
 - invoice export
 - accounting software integration
